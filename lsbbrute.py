@@ -10,26 +10,26 @@ def is_ascii(c):
     return 32 <= ord(c) < 127
 
 def get_ascii_per(s):
-'''return percentage of 'printable' ascii char in s'''
+    '''return percentage of 'printable' ascii char in s'''
     return (reduce(lambda acc,x: acc+(1 if x else 0),[ is_ascii(x) for x in s])*100)/len(s)
 
 def nsplit(s, n):
-'''Split a list into sublists of size "n"'''
-        return [s[k:k+n] for k in xrange(0, len(s), n)]
+    '''Split a list into sublists of size "n"'''
+    return [s[k:k+n] for k in xrange(0, len(s), n)]
 
 def bit_to_bytes_string(s):
-''' Join all the bit together to recreate the string'''
+    ''' Join all the bit together to recreate the string'''
     return ''.join([chr(int(x,2)) for x in nsplit(s, 8)])
 
 class LSBBruteForcer():
-    def __init__(self, filename):
-        self.image = cv.LoadImage(filename)       #Original image
+    def __init__(self, im):
+        self.image = im
         self.save_match = True                    #Save the dump when a sig match     
         self.ascii_threshold = 30                 #Threshold of ascii chars
         self.ignore_sigs = ["\xff","\xff\xff\xff\xff"] #Avoid generating too much false positive
         
     def get_rotated(self,im=None):
-    ''' Return a list of the fourth possible image rotation '''
+        ''' Return a list of the fourth possible image rotation '''
         l= []
         tmp_im = self.image if im is None else im
         l.append(tmp_im) #Add the file without rotation
@@ -42,7 +42,7 @@ class LSBBruteForcer():
         return l
 
     def get_separated_channels(self):
-    ''' Split the channels of an image '''
+        ''' Split the channels of an image '''
         b = cv.CreateImage(cv.GetSize(self.image),self.image.depth, 1)
         g = cv.CloneImage(b)
         r = cv.CloneImage(b)
@@ -50,7 +50,7 @@ class LSBBruteForcer():
         return [b,g,r]
 
     def get_shuffled_channels(self):
-    ''' Create a list of images with all channels combination '''
+        ''' Create a list of images with all channels combination '''
         b,g,r = self.get_separated_channels()
         l = []
         for x,y,z in [(r,g,b),(r,b,g),(g,r,b),(g,b,r),(b,g,r),(b,r,g)]:
@@ -60,7 +60,7 @@ class LSBBruteForcer():
         return l
 
     def brute_single(self, im=None, **kwargs):
-    ''' Iterate the various list and modes to find file signature '''
+        ''' Iterate the various list and modes to find file signature '''
         im = self.image if im is None else im
         for bit_mode in ["msb","lsb"]:
             for iter_mode in ["line","column"]:
@@ -80,7 +80,7 @@ class LSBBruteForcer():
                     self.analyse(final, **kwargs)
 
     def analyse(self, s, **kwargs):
-    ''' Method in charge to find matches with signatures '''
+        ''' Method in charge to find matches with signatures '''
         self.print_status(**kwargs)
         if filesig.is_known(s):
             for match in filesig.get_match(s):
@@ -95,7 +95,7 @@ class LSBBruteForcer():
             print("ASCII match > "+str(self.ascii_threshold)+"%")
 
     def to_name(self, **kwargs):
-    ''' Just create an name (when dumping hidden files) '''
+        ''' Just create an name (when dumping hidden files) '''
         infos = kwargs["rot"] if kwargs.has_key("rot") else "unknown"
         infos += "_"+(kwargs["color"] if kwargs.has_key("color") else "unknown")
         infos += "_"+(kwargs["bitmode"] if kwargs.has_key("bitmode") else "unknown")
@@ -109,7 +109,7 @@ class LSBBruteForcer():
         infos += " mode:"+(kwargs["bitmode"] if kwargs.has_key("bitmode") else "unknown")
         infos += " Iter:"+(kwargs["itermode"] if kwargs.has_key("itermode") else "unknown")
         infos += " way:"+(kwargs["readmode"] if kwargs.has_key("readmode") else "unknown")
-        print infos
+        print(infos)
 
     def brute_all(self):
         order = ["blue","green","red","RGB","RBG","GRB","GBR","BGR","BRG"]
@@ -119,9 +119,14 @@ class LSBBruteForcer():
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print ("./brute.py filename")
+        print("./brute.py filename")
         sys.exit(1)
     else:
-        fn = sys.argv[1]
-        brute = LSBBruteForcer(fn)
-        brute.brute_all()
+        try:
+            img = cv.LoadImage(sys.argv[1])
+            brute = LSBBruteForcer(fn)
+            brute.brute_all()
+            sys.exit(0)
+        except IOError:
+            print("Image type not handled")
+            sys.exit(1)
