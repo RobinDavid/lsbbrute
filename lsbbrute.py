@@ -124,7 +124,7 @@ if __name__ == "__main__":
     else:
         try:
             img = cv.LoadImage(sys.argv[1])
-            brute = LSBBruteForcer(fn)
+            brute = LSBBruteForcer(img)
             brute.brute_all()
             sys.exit(0)
         except IOError:
